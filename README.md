@@ -68,3 +68,8 @@ docker run -d \
     --net host \
     defunctzombie/localtunnel-server:latest --port 3000
 ```
+
+
+## Debug
+
+Set env `DEBUG=*` to see good output

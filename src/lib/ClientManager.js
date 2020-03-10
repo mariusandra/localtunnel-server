@@ -53,11 +53,13 @@ class ClientManager {
         clients[id] = client;
 
         client.once('close', () => {
+            this.debug('client closed')
             this.removeClient(id);
         });
 
         // try/catch used here to remove client id
         try {
+            this.debug('client starting to listen')
             const info = await agent.listen();
             ++stats.tunnels;
             return {
@@ -67,6 +69,7 @@ class ClientManager {
             };
         }
         catch (err) {
+            this.debug('client errored, removed: %s', err.message)
             this.removeClient(id);
             // rethrow error for upstream to handle
             throw err;

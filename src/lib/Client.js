@@ -10,7 +10,6 @@ import EventEmitter from 'events';
 class Client extends EventEmitter {
     constructor(options) {
         super();
-
         const agent = this.agent = options.agent;
         const id = this.id = options.id;
 
@@ -18,8 +17,9 @@ class Client extends EventEmitter {
 
         // client is given a grace period in which they can connect before they are _removed_
         this.graceTimeout = setTimeout(() => {
+            this.debug("grace closed %s", id)
             this.close();
-        }, 1000).unref();
+        }, 10000).unref();
 
         agent.on('online', () => {
             this.debug('client online %s', id);
@@ -63,7 +63,6 @@ class Client extends EventEmitter {
             method: req.method,
             headers: req.headers
         };
-
         const clientReq = http.request(opt, (clientRes) => {
             this.debug('< %s', req.url);
             // write response code and headers

@@ -6,8 +6,8 @@ import optimist from 'optimist';
 import log from 'book';
 import Debug from 'debug';
 
-import CreateServer from '../server';
-
+import CreateServer from '../src/server';
+import { bridgePort } from '../config'
 const debug = Debug('localtunnel');
 
 const argv = optimist
@@ -17,7 +17,7 @@ const argv = optimist
         describe: 'use this flag to indicate proxy over https'
     })
     .options('port', {
-        default: '80',
+        default: bridgePort,
         describe: 'listen on this port for outside requests'
     })
     .options('address', {

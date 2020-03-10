@@ -17,7 +17,6 @@ class TunnelAgent extends Agent {
             // this prevents it from holding on to all the sockets so they can be used for upgrades
             maxFreeSockets: 1,
         });
-
         // sockets we can hand out via createConnection
         this.availableSockets = [];
 
@@ -30,10 +29,9 @@ class TunnelAgent extends Agent {
         // track maximum allowed sockets
         this.connectedSockets = 0;
         this.maxTcpSockets = options.maxTcpSockets || DEFAULT_MAX_SOCKETS;
-
         // new tcp server to service requests for this client
         this.server = net.createServer();
-
+        this.debug('!! net.createServer() created')
         // flag to avoid double starts
         this.started = false;
         this.closed = false;
@@ -46,6 +44,7 @@ class TunnelAgent extends Agent {
     }
 
     listen() {
+        this.debug('!! listening')
         const server = this.server;
         if (this.started) {
             throw new Error('already started');
@@ -88,6 +87,7 @@ class TunnelAgent extends Agent {
 
     // new socket connection from client for tunneling requests to client
     _onConnection(socket) {
+        this.debug('/// got connection')
         // no more socket connections allowed
         if (this.connectedSockets >= this.maxTcpSockets) {
             this.debug('no more sockets allowed');
@@ -113,16 +113,19 @@ class TunnelAgent extends Agent {
 
         // close will be emitted after this
         socket.once('error', (err) => {
+            this.debug('!! sc error')
             // we do not log these errors, sessions can drop from clients for many reasons
             // these are not actionable errors for our server
             socket.destroy();
         });
 
         if (this.connectedSockets === 0) {
+            this.debug('!! emitting')
             this.emit('online');
         }
 
         this.connectedSockets += 1;
+        this.debug('connected sockets: %d', this.connectedSockets)
         this.debug('new connection from: %s:%s', socket.address().address, socket.address().port);
 
         // if there are queued callbacks, give this socket now and don't queue into available
@@ -137,22 +140,24 @@ class TunnelAgent extends Agent {
 
         // make socket available for those waiting on sockets
         this.availableSockets.push(socket);
+        this.debug('pushed to available sockets')
     }
 
     // fetch a socket from the available socket pool for the agent
     // if no socket is available, queue
     // cb(err, socket)
     createConnection(options, cb) {
+        this.debug('!! create', this.closed)
         if (this.closed) {
             cb(new Error('closed'));
             return;
         }
 
         this.debug('create connection');
-
+        this.debug('!! c1')
         // socket is a tcp connection back to the user hosting the site
         const sock = this.availableSockets.shift();
-
+        this.debug('!! c2')
         // no available sockets
         // wait until we have one
         if (!sock) {
@@ -161,7 +166,7 @@ class TunnelAgent extends Agent {
             this.debug('waiting available: %s', this.availableSockets.length);
             return;
         }
-
+        this.debug('!! got sock')
         this.debug('socket given');
         cb(null, sock);
     }

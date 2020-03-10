@@ -7,6 +7,7 @@ import { hri } from 'human-readable-ids';
 import Router from 'koa-router';
 
 import ClientManager from './lib/ClientManager';
+import { rootDomain, landingPage, bridgeDomainSubdomain } from '../config'
 
 const debug = Debug('localtunnel:server');
 
@@ -15,10 +16,13 @@ export default function(opt) {
 
     const validHosts = (opt.domain) ? [opt.domain] : undefined;
     const myTldjs = tldjs.fromUserSettings({ validHosts });
-    const landingPage = opt.landing || 'https://localtunnel.github.io/www/';
 
     function GetClientIdFromHostname(hostname) {
-        return myTldjs.getSubdomain(hostname);
+        const subdomain = myTldjs.getSubdomain(hostname)
+        if (subdomain === bridgeDomainSubdomain) {
+            return null
+        }
+        return subdomain
     }
 
     const manager = new ClientManager(opt);
@@ -68,8 +72,9 @@ export default function(opt) {
             const reqId = hri.random();
             debug('making new client with id %s', reqId);
             const info = await manager.newClient(reqId);
+            debug('!! new client', reqId)
 
-            const url = schema + '://' + info.id + '.' + ctx.request.host;
+            const url = schema + '://' + info.id + '.' + rootDomain;
             info.url = url;
             ctx.body = info;
             return;
@@ -107,7 +112,7 @@ export default function(opt) {
         debug('making new client with id %s', reqId);
         const info = await manager.newClient(reqId);
 
-        const url = schema + '://' + info.id + '.' + ctx.request.host;
+        const url = schema + '://' + info.id + '.' + rootDomain;
         info.url = url;
         ctx.body = info;
         return;
@@ -127,6 +132,8 @@ export default function(opt) {
         }
 
         const clientId = GetClientIdFromHostname(hostname);
+        debug('HTTP request from host: %s, clientId: %s', hostname, clientId)
+
         if (!clientId) {
             appCallback(req, res);
             return;
@@ -134,15 +141,18 @@ export default function(opt) {
 
         const client = manager.getClient(clientId);
         if (!client) {
+            debug('no client found for host %s, client %s', hostname, clientId)
             res.statusCode = 404;
             res.end('404');
             return;
         }
 
+        debug('handling request, host %s, client %s', hostname, clientId)
         client.handleRequest(req, res);
     });
 
     server.on('upgrade', (req, socket, head) => {
+        debug('upgrading')
         const hostname = req.headers.host;
         if (!hostname) {
             socket.destroy();
